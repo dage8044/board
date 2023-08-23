@@ -1,0 +1,62 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <title>Document</title>
+</head>
+<body>
+    {% include "navbar.html" %}
+    <div class="container my-3">
+        <!-- 질문 -->
+        <h2 class="border-bottom py-2">{{question.title }}</h2>
+        <div class="card my-3">
+            <div class="card-body">
+                <div class="card-text" style="white-space: pre-line;">{{ question.content }}</div>
+                <div class="d-flex justify-content-end">
+                    <div class="badge bg-light text-dark p-2">
+                        {{ question.user}}
+                        {{ question.created }}
+                    </div>
+                </div>
+                <div class="my-3">
+                    {% if name == question.user %}
+                    <a href="{{ url_for('delete_question', id=question.user, num = question.num) }}"
+                       class="btn btn-sm btn-outline-secondary">삭제</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- 답변 목록 -->
+        <h5 class="border-bottom my-3 py-2">{{ comments|length }}개의 답변이 있습니다.</h5>
+        {% for answer in comments %}
+        <div class="card my-3">
+            <div class="card-body">
+                <div class="card-text" style="white-space: pre-line;">{{ answer.content }}</div>
+                <div class="d-flex justify-content-end">
+                    <div class="badge bg-light text-dark p-2">
+                        {{ answer.user}}
+                        {{ answer.created }}
+                    </div>
+                </div>
+                <div class="my-3">
+                    {% if name == answer.user %}
+                    <a href="{{ url_for('delete_comment', id=answer.id, num = answer.post_num) }}"
+                       class="btn btn-sm btn-outline-secondary">삭제</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        <!-- 답변 등록 -->
+        <form action="{{ url_for('detail', num=question.num) }}" method="post" class="my-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <textarea name="content" id="content" class="form-control" rows="10"></textarea>
+            </div>
+            <input type="submit" value="답변등록" class="btn btn-primary">
+        </form>
+    </div>
+    
+</body>
+</html>
