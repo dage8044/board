@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google Maps - Create Marker on Click</title>
+    <style>
+      #map {
+        height: 400px;
+        width: 100%;
+      }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBovU6m43JTTIwwg-KQ8IbXZ0SKjJPxvaw&callback=initMap" async defer></script>
+    <script>
+      var map;
+      var marker;
+      var geocoder;
+
+      var RE = 6371.00877; // 지구 반경(km)
+      var GRID = 5.0; // 격자 간격(km)
+      var SLAT1 = 30.0; // 투영 위도1(degree)
+      var SLAT2 = 60.0; // 투영 위도2(degree)
+      var OLON = 126.0; // 기준점 경도(degree)
+      var OLAT = 38.0; // 기준점 위도(degree)
+      var XO = 43; // 기준점 X좌표(GRID)
+      var YO = 136; // 기1준점 Y좌표(GRID)
+      //
+      // LCC DFS 좌표변환 ( code : "toXY"(위경도->좌표, v1:위도, v2:경도), "toLL"(좌표->위경도,v1:x, v2:y) )
+      //
+
+
+      function dfs_xy_conv(code, v1, v2) {
+          var DEGRAD = Math.PI / 180.0;
+          var RADDEG = 180.0 / Math.PI;
+
+          var re = RE / GRID;
+          var slat1 = SLAT1 * DEGRAD;
+          var slat2 = SLAT2 * DEGRAD;
+          var olon = OLON * DEGRAD;
+          var olat = OLAT * DEGRAD;
+
+          var sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+          sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
+          var sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+          sf = Math.pow(sf, sn) * Math.cos(slat1) / sn;
+          var ro = Math.tan(Math.PI * 0.25 + olat * 0.5);
+          ro = re * sf / Math.pow(ro, sn);
+          var rs = {};
+          if (code == "toXY") {
+              rs['lat'] = v1;
+              rs['lng'] = v2;
+              var ra = Math.tan(Math.PI * 0.25 + (v1) * DEGRAD * 0.5);
+              ra = re * sf / Math.pow(ra, sn);
+              var theta = v2 * DEGRAD - olon;
+              if (theta > Math.PI) theta -= 2.0 * Math.PI;
+              if (theta < -Math.PI) theta += 2.0 * Math.PI;
+              theta *= sn;
+              rs['x'] = Math.floor(ra * Math.sin(theta) + XO + 0.5);
+              rs['y'] = Math.floor(ro - ra * Math.cos(theta) + YO + 0.5);
+          }
+          else {
+              rs['x'] = v1;
+              rs['y'] = v2;
+              var xn = v1 - XO;
+              var yn = ro - v2 + YO;
+              ra = Math.sqrt(xn * xn + yn * yn);
+              if (sn < 0.0) - ra;
+              var alat = Math.pow((re * sf / ra), (1.0 / sn));
+              alat = 2.0 * Math.atan(alat) - Math.PI * 0.5;
+
+              if (Math.abs(xn) <= 0.0) {
+                  theta = 0.0;
+              }
+              else {
+                  if (Math.abs(yn) <= 0.0) {
+                      theta = Math.PI * 0.5;
+                      if (xn < 0.0) - theta;
+                  }
+                  else theta = Math.atan2(xn, yn);
+              }
+              var alon = theta / sn + olon;
+              rs['lat'] = alat * RADDEG;
+              rs['lng'] = alon * RADDEG;
+          }
+          return rs;
+      }
+
+      function initMap() {
+        // 맵 초기화
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 37.5, lng: 127.0 },
+          zoom: 10
+        });
+
+        // 클릭 이벤트 리스너 추가
+        map.addListener("click", function(event) {
+          placeMarker(event.latLng); // 클릭한 위치에 마커를 표시하는 함수 호출
+        });
+
+        // 지오코딩 서비스 초기화
+        geocoder = new google.maps.Geocoder();
+      }
+
+      function placeMarker(location) {
+        // 기존 마커 제거
+        if (marker) {
+          marker.setMap(null);
+        }
+
+        // 클릭한 위치에 새로운 마커 생성
+        marker = new google.maps.Marker({
+          position: location,
+          map: map
+        });
+
+        // 클릭한 위치의 좌표 출력
+        var lat = location.lat();
+        var lng = location.lng();
+        console.log("클릭한 위치의 좌표: " + lat + ", " + lng);
+        console.log(dfs_xy_conv("toXY", lat, lng))
+
+        // 좌표를 주소로 변환
+        geocodeLatLng(lat, lng);
+      }
+
+      function geocodeLatLng(lat, lng) {
+        var latLng = new google.maps.LatLng(lat, lng);
+
+        var geocoder = new google.maps.Geocoder();
+        var geocoderRequest = {
+          location: latLng
+        };
+
+        geocoder.geocode(geocoderRequest, function(results, status) {
+          if (status === "OK") {
+            if (results[0]) {
+              var address = results[0].formatted_address;
+              console.log("클릭한 위치의 주소: " + address);
+            } else {
+              console.log("주소 정보를 찾을 수 없습니다.");
+            }
+          } else {
+            console.log("지오코딩 요청에 실패했습니다. 상태: " + status);
+          }
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>

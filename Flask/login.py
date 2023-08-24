@@ -238,7 +238,8 @@ def detail(num):
         comments = cursor.fetchall()
         cursor.close()
         return render_template('question_detail.html', question = question_data, num = num, comments = comments, name = name)
-@app.route('/delete_comment/<int:num>/id')
+
+@app.route('/delete_comment/<int:num>/<string:id>')
 def delete_comment(id, num):
     connection = get_db()
     cursor = connection.cursor()
@@ -256,7 +257,27 @@ def delete_question(id, num):
     connection.commit()
     connection.close()
     return redirect(url_for('success', username = id))
-
+@app.route('/update_question/<int:num>/<string:id>', methods=['GET', 'POST'])
+def update_question(id, num):
+    name = session.get('username')
+    if request.method == 'POST':            
+        content = request.form['content']
+        title = request.form['title']
+        current_datetime = datetime.datetime.now()
+        created = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        connection = get_db()
+        cursor = connection.cursor()
+        cursor.execute("UPDATE board SET title = ?, user = ?, created = ?, content = ? WHERE num = ?", (title, name, created, content, num))
+        connection.commit()
+        cursor.close()
+        return redirect(url_for('detail', num=num))
+    else:
+        connection = get_db()
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM board WHERE num = ?", (num,))
+        question_data = cursor.fetchone()
+        cursor.close()
+        return render_template('question_update.html',name = name, question = question_data)
 @app.route('/create', methods = ['GET', 'POST'])
 def question_create():
     name = session.get('username')

@@ -21,6 +21,8 @@
                 </div>
                 <div class="my-3">
                     {% if name == question.user %}
+                    <a href="{{ url_for('update_question', id=question.user, num = question.num) }}"
+                       class="btn btn-sm btn-outline-secondary">수정하기</a>
                     <a href="{{ url_for('delete_question', id=question.user, num = question.num) }}"
                        class="btn btn-sm btn-outline-secondary">삭제</a>
                     {% endif %}

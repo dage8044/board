@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google Maps - Create Marker on Click</title>
+    <style>
+      #map {
+        height: 400px;
+        width: 100%;
+      }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBovU6m43JTTIwwg-KQ8IbXZ0SKjJPxvaw&callback=initMap" async defer></script>
+    <script>
+      var map;
+      var marker;
+      var geocoder;
+
+      function initMap() {
+        // 맵 초기화
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 37.5, lng: 127.0 },
+          zoom: 10
+        });
+
+        // 클릭 이벤트 리스너 추가
+        map.addListener("click", function(event) {
+          placeMarker(event.latLng); // 클릭한 위치에 마커를 표시하는 함수 호출
+        });
+
+        // 지오코딩 서비스 초기화
+        geocoder = new google.maps.Geocoder();
+      }
+
+      function placeMarker(location) {
+        // 기존 마커 제거
+        if (marker) {
+          marker.setMap(null);
+        }
+
+        // 클릭한 위치에 새로운 마커 생성
+        marker = new google.maps.Marker({
+          position: location,
+          map: map
+        });
+
+        // 클릭한 위치의 좌표 출력
+        var lat = location.lat();
+        var lng = location.lng();
+        console.log("클릭한 위치의 좌표: " + lat + ", " + lng);
+
+        // 좌표를 주소로 변환
+        geocodeLatLng(lat, lng);
+      }
+
+      function geocodeLatLng(lat, lng) {
+        var latLng = new google.maps.LatLng(lat, lng);
+
+        geocoder.geocode({ location: latLng }, function(results, status) {
+          if (status === "OK") {
+            if (results[0]) {
+              var address = results[0].formatted_address;
+              console.log("클릭한 위치의 주소: " + address);
+            } else {
+              console.log("주소 정보를 찾을 수 없습니다.");
+            }
+          } else {
+            console.log("지오코딩 요청에 실패했습니다. 상태: " + status);
+          }
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>
