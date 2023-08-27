@@ -15,11 +15,11 @@
             <textarea class="form-control" name="content" id="content" rows="10">{{ question.content }}</textarea>
         </div>
         <button type="submit" class="btn btn-primary">저장하기</button>
-        <button type="button" class="btn btn-secondary" onclick="Back()">취소</button>
+        <button type="button" class="btn btn-secondary" onclick="Cancel()">취소</button>
     </form>
 </div>
 <script>
-    function Back() {
+    function Cancel() {
         window.history.back();
     }
 </script>
