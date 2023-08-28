@@ -278,6 +278,7 @@ def update_question(id, num):
         question_data = cursor.fetchone()
         cursor.close()
         return render_template('question_update.html',name = name, question = question_data)
+    
 @app.route('/create', methods = ['GET', 'POST'])
 def question_create():
     name = session.get('username')
@@ -298,7 +299,17 @@ def question_create():
         return redirect(url_for('detail', num = num))
 
     return render_template('question_create.html', name = name)
-
+@app.route('/mypage/<username>', methods=['GET'])
+def mypage():
+    name = session.get('username')
+    connection = get_db()
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM board WHERE user = ?", (name,))
+    question_data = cursor.fetchone()
+    cursor.execute("SELECT * FROM comments WHERE user = ?", (name,))
+    comments_data = cursor.fetchone()
+    cursor.close()
+    return render_template('mypage.html', question_data = question_data, commets_data = comments_data, name = name)
 if __name__ == '__main__':
     app.run(debug=True)
     
