@@ -299,17 +299,31 @@ def question_create():
         return redirect(url_for('detail', num = num))
 
     return render_template('question_create.html', name = name)
+
 @app.route('/mypage/<username>', methods=['GET'])
-def mypage():
-    name = session.get('username')
+def mypage(username):
+    page = request.args.get('page', 1, type=int)
+    page_size = 5  # 한 페이지에 표시할 아이템 수
+    offset = (page - 1) * page_size
     connection = get_db()
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM board WHERE user = ?", (name,))
-    question_data = cursor.fetchone()
-    cursor.execute("SELECT * FROM comments WHERE user = ?", (name,))
-    comments_data = cursor.fetchone()
+    cursor.execute("SELECT COUNT(*) FROM board")
+    total_items = cursor.fetchone()[0]
+    total_pages = (total_items + page_size - 1) // page_size
+    cursor.execute("SELECT COUNT(*) FROM comments")
+    comments_items = cursor.fetchone()[0]
+    comments_pages = (comments_items + page_size - 1) // page_size
+
+
+    # 게시글 목록을 역순으로 가져옵니다.
+    cursor.execute("SELECT board.*, COUNT(comments.id) as answer_count FROM board LEFT JOIN comments ON board.num = comments.post_num GROUP BY board.num ORDER BY board.created DESC LIMIT ? OFFSET ?", (page_size, offset))
+    question_list = cursor.fetchall()
+    question_with_index = [(total_items - offset - idx, question) for idx, question in enumerate(question_list)]
+    cursor.execute("SELECT comments.*, COUNT(*) as comment_count FROM comments WHERE user = ? GROUP BY user ORDER BY comment_count DESC LIMIT ? OFFSET ?", (username, page_size, offset))
+    comments_list = cursor.fetchall()
+    comments_with_index = [(comments_items - offset - idx, comment) for idx, comment in enumerate(comments_list)]
     cursor.close()
-    return render_template('mypage.html', question_data = question_data, commets_data = comments_data, name = name)
+    return render_template('mypage.html', comments_list = comments_with_index, name=username, question_list=question_with_index, current_page=page, total_pages=total_pages, comments_pages=comments_pages)
 if __name__ == '__main__':
     app.run(debug=True)
     
