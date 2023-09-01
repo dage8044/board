@@ -319,7 +319,13 @@ def mypage(username):
     cursor.execute("SELECT board.*, COUNT(comments.id) as answer_count FROM board LEFT JOIN comments ON board.num = comments.post_num GROUP BY board.num ORDER BY board.created DESC LIMIT ? OFFSET ?", (page_size, offset))
     question_list = cursor.fetchall()
     question_with_index = [(total_items - offset - idx, question) for idx, question in enumerate(question_list)]
-    cursor.execute("SELECT comments.*, COUNT(*) as comment_count FROM comments WHERE user = ? GROUP BY user ORDER BY comment_count DESC LIMIT ? OFFSET ?", (username, page_size, offset))
+    cursor.execute("""
+    SELECT comments.*, comment_counts.comment_count FROM comments JOIN (SELECT user, COUNT(*) as comment_count FROM comments WHERE user = ? GROUP BY user) as comment_counts 
+    ON comments.user = comment_counts.user
+    WHERE comments.user = ?
+    ORDER BY comment_counts.comment_count DESC
+    LIMIT ? OFFSET ?
+    """, (username, username, page_size, offset))
     comments_list = cursor.fetchall()
     comments_with_index = [(comments_items - offset - idx, comment) for idx, comment in enumerate(comments_list)]
     cursor.close()
