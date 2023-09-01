@@ -303,8 +303,11 @@ def question_create():
 @app.route('/mypage/<username>', methods=['GET'])
 def mypage(username):
     page = request.args.get('page', 1, type=int)
+    main_page = request.args.get('main_page', 1, type=int)
+    comments_page = request.args.get('comments_page', 1, type=int)
     page_size = 5  # 한 페이지에 표시할 아이템 수
-    offset = (page - 1) * page_size
+    main_offset = (main_page - 1) * page_size
+    comments_offset = (comments_page - 1) * page_size
     connection = get_db()
     cursor = connection.cursor()
     cursor.execute("SELECT COUNT(*) FROM board")
@@ -316,20 +319,20 @@ def mypage(username):
 
 
     # 게시글 목록을 역순으로 가져옵니다.
-    cursor.execute("SELECT board.*, COUNT(comments.id) as answer_count FROM board LEFT JOIN comments ON board.num = comments.post_num GROUP BY board.num ORDER BY board.created DESC LIMIT ? OFFSET ?", (page_size, offset))
+    cursor.execute("SELECT board.*, COUNT(comments.id) as answer_count FROM board LEFT JOIN comments ON board.num = comments.post_num GROUP BY board.num ORDER BY board.created DESC LIMIT ? OFFSET ?", (page_size, main_offset))
     question_list = cursor.fetchall()
-    question_with_index = [(total_items - offset - idx, question) for idx, question in enumerate(question_list)]
+    question_with_index = [(total_items - main_offset - idx, question) for idx, question in enumerate(question_list)]
     cursor.execute("""
     SELECT comments.*, comment_counts.comment_count FROM comments JOIN (SELECT user, COUNT(*) as comment_count FROM comments WHERE user = ? GROUP BY user) as comment_counts 
     ON comments.user = comment_counts.user
     WHERE comments.user = ?
     ORDER BY comment_counts.comment_count DESC
     LIMIT ? OFFSET ?
-    """, (username, username, page_size, offset))
+    """, (username, username, page_size, comments_offset))
     comments_list = cursor.fetchall()
-    comments_with_index = [(comments_items - offset - idx, comment) for idx, comment in enumerate(comments_list)]
+    comments_with_index = [(comments_items - comments_offset - idx, comment) for idx, comment in enumerate(comments_list)]
     cursor.close()
-    return render_template('mypage.html', comments_list = comments_with_index, name=username, question_list=question_with_index, current_page=page, total_pages=total_pages, comments_pages=comments_pages)
+    return render_template('mypage.html', comments_list = comments_with_index, name=username, question_list=question_with_index, main_current_page=main_page, comments_current_page=comments_page, total_pages=total_pages, comments_pages=comments_pages, current_page=page)
 if __name__ == '__main__':
     app.run(debug=True)
     
