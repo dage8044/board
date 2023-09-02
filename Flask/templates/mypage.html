@@ -73,6 +73,7 @@
             </tr>    
             <tr class="table-dark">
                 <th>번호</th>
+                <th>작성댓글</th>
                 <th>작성일시</th>
             </tr>
             </thead>
@@ -111,7 +112,7 @@
             {% endfor %}
 
             <!-- 다음페이지 -->
-            {% if current_page < comments_pages %}
+            {% if comments_current_page < comments_pages %}
             <a class="page-link" href="?main_page={{ main_current_page }}&comments_page={{ comments_current_page + 1}}">다음</a>
             {% else %}
             <span class="page-link">다음</span>

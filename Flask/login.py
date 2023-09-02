@@ -210,10 +210,8 @@ def success(username):
 
 @app.route('/detail/<int:num>', methods = ['GET', 'POST'])
 def detail(num):
-    print(999)
     name = session.get('username')
-    if request.method == 'POST':      
-        print(0)       
+    if request.method == 'POST':            
         content = request.form['content']
         connection = get_db()
         cursor = connection.cursor()
@@ -228,7 +226,6 @@ def detail(num):
         cursor.close()
         connection.close()
         return render_template('question_detail.html', question = question_data, num = num, comments = comments, name = name)
-
     else:
         connection = get_db()
         cursor = connection.cursor()
@@ -236,6 +233,8 @@ def detail(num):
         question_data = cursor.fetchone()
         cursor.execute("SELECT * FROM comments WHERE post_num = ?", (num,))
         comments = cursor.fetchall()
+        cursor.execute("UPDATE board SET views = views + 1 WHERE num = ?", (num,))
+        connection.commit()
         cursor.close()
         return render_template('question_detail.html', question = question_data, num = num, comments = comments, name = name)
 
@@ -319,14 +318,22 @@ def mypage(username):
 
 
     # 게시글 목록을 역순으로 가져옵니다.
-    cursor.execute("SELECT board.*, COUNT(comments.id) as answer_count FROM board LEFT JOIN comments ON board.num = comments.post_num GROUP BY board.num ORDER BY board.created DESC LIMIT ? OFFSET ?", (page_size, main_offset))
+    cursor.execute("""
+    SELECT board.*, COUNT(comments.id) as answer_count 
+    FROM board 
+    LEFT JOIN comments ON board.num = comments.post_num 
+    WHERE board.user = ?  
+    GROUP BY board.num 
+    ORDER BY board.created DESC 
+    LIMIT ? OFFSET ?
+    """, (username, page_size, main_offset))
     question_list = cursor.fetchall()
     question_with_index = [(total_items - main_offset - idx, question) for idx, question in enumerate(question_list)]
     cursor.execute("""
     SELECT comments.*, comment_counts.comment_count FROM comments JOIN (SELECT user, COUNT(*) as comment_count FROM comments WHERE user = ? GROUP BY user) as comment_counts 
     ON comments.user = comment_counts.user
     WHERE comments.user = ?
-    ORDER BY comment_counts.comment_count DESC
+    ORDER BY comments.created DESC
     LIMIT ? OFFSET ?
     """, (username, username, page_size, comments_offset))
     comments_list = cursor.fetchall()
