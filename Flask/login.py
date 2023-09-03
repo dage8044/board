@@ -256,6 +256,7 @@ def delete_question(id, num):
     connection.commit()
     connection.close()
     return redirect(url_for('success', username = id))
+
 @app.route('/update_question/<int:num>/<string:id>', methods=['GET', 'POST'])
 def update_question(id, num):
     name = session.get('username')
@@ -296,7 +297,6 @@ def question_create():
         cursor.close()
         connection.close()
         return redirect(url_for('detail', num = num))
-
     return render_template('question_create.html', name = name)
 
 @app.route('/mypage/<username>', methods=['GET'])
@@ -315,8 +315,6 @@ def mypage(username):
     cursor.execute("SELECT COUNT(*) FROM comments")
     comments_items = cursor.fetchone()[0]
     comments_pages = (comments_items + page_size - 1) // page_size
-
-
     # 게시글 목록을 역순으로 가져옵니다.
     cursor.execute("""
     SELECT board.*, COUNT(comments.id) as answer_count 
@@ -330,8 +328,10 @@ def mypage(username):
     question_list = cursor.fetchall()
     question_with_index = [(total_items - main_offset - idx, question) for idx, question in enumerate(question_list)]
     cursor.execute("""
-    SELECT comments.*, comment_counts.comment_count FROM comments JOIN (SELECT user, COUNT(*) as comment_count FROM comments WHERE user = ? GROUP BY user) as comment_counts 
-    ON comments.user = comment_counts.user
+    SELECT comments.*, comment_counts.comment_count 
+    FROM comments 
+    JOIN (SELECT user, COUNT(*) as comment_count FROM comments 
+    WHERE user = ? GROUP BY user) as comment_counts ON comments.user = comment_counts.user
     WHERE comments.user = ?
     ORDER BY comments.created DESC
     LIMIT ? OFFSET ?
@@ -340,6 +340,50 @@ def mypage(username):
     comments_with_index = [(comments_items - comments_offset - idx, comment) for idx, comment in enumerate(comments_list)]
     cursor.close()
     return render_template('mypage.html', comments_list = comments_with_index, name=username, question_list=question_with_index, main_current_page=main_page, comments_current_page=comments_page, total_pages=total_pages, comments_pages=comments_pages, current_page=page)
+
+@app.route('/like_question/<int:question_num>')
+def like_question(question_num):
+    name = session.get('username')
+    connection = get_db()
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM liked_question WHERE user_id = ? AND question_num = ?", (name, question_num))
+    existing_like = cursor.fetchone()   
+    if not existing_like:
+        # 사용자가 해당 게시글을 아직 추천하지 않았으므로 추천을 추가
+        cursor.execute("INSERT INTO liked_question (user_id, question_num) VALUES (?, ?)", (name, question_num))
+        connection.commit()      
+        cursor.execute("UPDATE board SET likes = likes + 1 WHERE num = ?", (question_num,))
+        connection.commit()
+        cursor.close()
+        return redirect(url_for('detail', num = question_num))
+    else:
+        flash("추천은 1번만 가능합니다.")
+        return redirect(url_for('detail', num=question_num ))
+
+@app.route('/like_comment/<int:post_id>')
+def like_comment(post_id):
+    name = session.get('username')
+    connection = get_db()
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM liked_comment WHERE user_id = ? AND post_id = ?", (name, post_id))
+    existing_like = cursor.fetchone()
+    cursor.execute("SELECT post_num FROM comments WHERE id = ?", (post_id,))
+    question_number = cursor.fetchall()  # question 변수를 여기서 초기화
+    
+    if not existing_like:
+        # 사용자가 해당 게시글을 아직 추천하지 않았으므로 추천을 추가
+        cursor.execute("INSERT INTO liked_comment (user_id, post_id) VALUES (?, ?)", (name, post_id))
+        connection.commit()     
+        cursor.execute("UPDATE comments SET likes = likes + 1 WHERE id = ?", (post_id,))
+        connection.commit()
+        cursor.close()
+        return redirect(url_for('detail', num=question_number[0]['post_num']))
+
+    else:
+        flash("추천은 1번만 가능합니다.")
+        cursor.close()
+        return redirect(url_for('detail', num=question_number[0]['post_num'] ))
+
 if __name__ == '__main__':
     app.run(debug=True)
     
