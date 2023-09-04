@@ -3,6 +3,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+      
     <title>Document</title>
 </head>
 <body>
@@ -51,8 +52,10 @@
                         <span class="badge rounded-pill bg-success">{{ answer.likes }}</span>
                     </a>
                     {% if name == answer.user %}
+                    <a href="{{ url_for('update_comment', id=answer.id, num = answer.post_num) }}"
+                    class="btn btn-sm btn-outline-secondary">수정하기</a>
                     <a href="{{ url_for('delete_comment', id=answer.id, num = answer.post_num) }}"
-                       class="btn btn-sm btn-outline-secondary">삭제</a>
+                    class="btn btn-sm btn-outline-secondary">삭제</a>             
                     {% endif %}
                 </div>
             </div>

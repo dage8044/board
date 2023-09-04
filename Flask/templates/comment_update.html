@@ -1,0 +1,63 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">  
+    <title>Document</title>
+</head>
+<body>
+    {% include "navbar.html" %}
+    <div class="container my-3">
+        <!-- 질문 -->
+        <h2 class="border-bottom py-2">{{question.title }}</h2>
+        <div class="card my-3">
+            <div class="card-body">
+                <div class="card-text" style="white-space: pre-line;">{{ question.content }}</div>
+                <div class="d-flex justify-content-end">
+                    <div class="badge bg-light text-dark p-2">
+                        {{ question.user}}
+                        {{ question.created }}
+                    </div>
+                </div>
+                <div class="my-3">
+                    <a href="{{ url_for('like_question', question_num = question.num ) }}"
+                        class="recommend btn btn-sm btn-outline-secondary"> 추천
+                        <span class="badge rounded-pill bg-success">{{ question.likes }}</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% for answer in comments %}
+        {% if answer.id == id %}
+        <form method="post" class="my-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="card my-3">
+                <div class="card-body">
+                    <div class="card-text">
+                        <label for="content">내용</label>
+                        <textarea class="form-control" name="content" id="content" rows="10">{{ answer.content }}</textarea>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <div class="badge bg-light text-dark p-2">
+                            {{ answer.user}}
+                            {{ answer.created }}
+                        </div>
+                    </div>
+                    <div class="my-3">
+                        {% if name == answer.user %}
+                        <button type="submit" class="btn btn-primary">저장하기</button>
+                        <button type="button" class="btn btn-secondary" onclick="Cancel()">취소</button>          
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </form>
+        {% endif %}
+        {% endfor %}
+    <script>
+        function Cancel() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>

@@ -269,6 +269,8 @@ def update_question(id, num):
         cursor = connection.cursor()
         cursor.execute("UPDATE board SET title = ?, user = ?, created = ?, content = ? WHERE num = ?", (title, name, created, content, num))
         connection.commit()
+        cursor.execute("UPDATE board SET likes = 0 WHERE num = ?", (num,))
+        connection.commit()
         cursor.close()
         return redirect(url_for('detail', num=num))
     else:
@@ -278,6 +280,31 @@ def update_question(id, num):
         question_data = cursor.fetchone()
         cursor.close()
         return render_template('question_update.html',name = name, question = question_data)
+
+@app.route('/update_comment/<int:num>/<int:id>', methods=['GET', 'POST'])
+def update_comment(id, num):
+    name = session.get('username')
+    if request.method == 'POST':            
+        content = request.form['content']
+        current_datetime = datetime.datetime.now()
+        created = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        connection = get_db()
+        cursor = connection.cursor()
+        cursor.execute("UPDATE comments SET user = ?, created = ?, content = ? WHERE id = ?", (name, created, content, id))
+        connection.commit()
+        cursor.execute("UPDATE board SET likes = 0 WHERE id = ?", (id,))
+        connection.commit()
+        cursor.close()
+        return redirect(url_for('detail', num=num))
+    else:
+        connection = get_db()
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM board WHERE num = ?", (num,))
+        question_data = cursor.fetchone()
+        cursor.execute("SELECT * FROM comments WHERE id = ?", (id,))
+        comment_data = cursor.fetchall()
+        cursor.close()
+        return render_template('comment_update.html',name = name, question = question_data, comments = comment_data, id = id)
     
 @app.route('/create', methods = ['GET', 'POST'])
 def question_create():
