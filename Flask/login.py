@@ -238,11 +238,13 @@ def detail(num):
         cursor.close()
         return render_template('question_detail.html', question = question_data, num = num, comments = comments, name = name)
 
-@app.route('/delete_comment/<int:num>/<string:id>')
+@app.route('/delete_comment/<int:num>/<int:id>')
 def delete_comment(id, num):
+    name = session.get('username')
     connection = get_db()
     cursor = connection.cursor()
     cursor.execute("DELETE FROM comments WHERE id = ?", (id,))
+    cursor.execute("DELETE FROM liked_comment WHERE user_id = ? AND post_id = ?", (name, id))
     connection.commit()
     connection.close()
     return redirect(url_for('detail', num = num))
@@ -253,6 +255,8 @@ def delete_question(id, num):
     cursor = connection.cursor()
     cursor.execute("DELETE FROM board WHERE num = ?", (num,))
     cursor.execute("DELETE FROM comments WHERE post_num = ?", (num,))
+    cursor.execute("DELETE FROM liked_question WHERE user_id = ? AND question_num = ?", (id, num))
+    cursor.execute("DELETE FROM liked_comment WHERE post_num = ?", (num,))
     connection.commit()
     connection.close()
     return redirect(url_for('success', username = id))
@@ -271,6 +275,8 @@ def update_question(id, num):
         connection.commit()
         cursor.execute("UPDATE board SET likes = 0 WHERE num = ?", (num,))
         connection.commit()
+        cursor.execute("DELETE FROM liked_question WHERE user_id = ? AND question_num = ?", (id, num))
+        connection.commit()
         cursor.close()
         return redirect(url_for('detail', num=num))
     else:
@@ -284,6 +290,7 @@ def update_question(id, num):
 @app.route('/update_comment/<int:num>/<int:id>', methods=['GET', 'POST'])
 def update_comment(id, num):
     name = session.get('username')
+    #comments의 id값을 가져와야 함 
     if request.method == 'POST':            
         content = request.form['content']
         current_datetime = datetime.datetime.now()
@@ -292,7 +299,10 @@ def update_comment(id, num):
         cursor = connection.cursor()
         cursor.execute("UPDATE comments SET user = ?, created = ?, content = ? WHERE id = ?", (name, created, content, id))
         connection.commit()
-        cursor.execute("UPDATE board SET likes = 0 WHERE id = ?", (id,))
+        cursor.execute("UPDATE comments SET likes = 0 WHERE id = ?", (id,))
+        connection.commit()
+        print(name, id)
+        cursor.execute("DELETE FROM liked_comment WHERE user_id = ? AND post_id = ?", (name, id))
         connection.commit()
         cursor.close()
         return redirect(url_for('detail', num=num))
@@ -387,29 +397,30 @@ def like_question(question_num):
         flash("추천은 1번만 가능합니다.")
         return redirect(url_for('detail', num=question_num ))
 
-@app.route('/like_comment/<int:post_id>')
-def like_comment(post_id):
+@app.route('/like_comment/<int:post_id>/<int:post_num>')
+def like_comment(post_id, post_num):
+    #post_id는 comments의 id값
     name = session.get('username')
     connection = get_db()
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM liked_comment WHERE user_id = ? AND post_id = ?", (name, post_id))
     existing_like = cursor.fetchone()
     cursor.execute("SELECT post_num FROM comments WHERE id = ?", (post_id,))
-    question_number = cursor.fetchall()  # question 변수를 여기서 초기화
+    question_number = cursor.fetchone()  # question 변수를 여기서 초기화
     
     if not existing_like:
         # 사용자가 해당 게시글을 아직 추천하지 않았으므로 추천을 추가
-        cursor.execute("INSERT INTO liked_comment (user_id, post_id) VALUES (?, ?)", (name, post_id))
+        cursor.execute("INSERT INTO liked_comment (user_id, post_id, post_num) VALUES (?, ?, ?)", (name, post_id, post_num))
         connection.commit()     
         cursor.execute("UPDATE comments SET likes = likes + 1 WHERE id = ?", (post_id,))
         connection.commit()
         cursor.close()
-        return redirect(url_for('detail', num=question_number[0]['post_num']))
+        return redirect(url_for('detail', num=question_number["post_num"]))
 
     else:
         flash("추천은 1번만 가능합니다.")
         cursor.close()
-        return redirect(url_for('detail', num=question_number[0]['post_num'] ))
+        return redirect(url_for('detail',num=question_number["post_num"] ))
 
 if __name__ == '__main__':
     app.run(debug=True)
