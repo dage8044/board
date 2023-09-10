@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, make_response, session
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response, session, jsonify
 from flask_mail import Mail, Message
 import hashlib
 import time
@@ -287,34 +287,25 @@ def update_question(id, num):
         cursor.close()
         return render_template('question_update.html',name = name, question = question_data)
 
-@app.route('/update_comment/<int:num>/<int:id>', methods=['GET', 'POST'])
+@app.route('/update_comment/<int:id>/<int:num>', methods=['POST'])
 def update_comment(id, num):
     name = session.get('username')
-    #comments의 id값을 가져와야 함 
-    if request.method == 'POST':            
+    if request.method == 'POST':
         content = request.form['content']
         current_datetime = datetime.datetime.now()
-        created = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        created = current_datetime.strftime('%Y-%m-%d %H:%M:%S')     
         connection = get_db()
         cursor = connection.cursor()
         cursor.execute("UPDATE comments SET user = ?, created = ?, content = ? WHERE id = ?", (name, created, content, id))
         connection.commit()
         cursor.execute("UPDATE comments SET likes = 0 WHERE id = ?", (id,))
         connection.commit()
-        print(name, id)
         cursor.execute("DELETE FROM liked_comment WHERE user_id = ? AND post_id = ?", (name, id))
         connection.commit()
-        cursor.close()
-        return redirect(url_for('detail', num=num))
-    else:
-        connection = get_db()
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM board WHERE num = ?", (num,))
-        question_data = cursor.fetchone()
-        cursor.execute("SELECT * FROM comments WHERE id = ?", (id,))
-        comment_data = cursor.fetchall()
-        cursor.close()
-        return render_template('comment_update.html',name = name, question = question_data, comments = comment_data, id = id)
+        cursor.close()    
+        return jsonify({'message': '댓글이 성공적으로 수정되었습니다.'})
+
+
     
 @app.route('/create', methods = ['GET', 'POST'])
 def question_create():

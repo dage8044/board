@@ -1,34 +1,35 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
-      
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <title>Document</title>
 </head>
 <body>
     {% include "navbar.html" %}
     <div class="container my-3">
         <!-- 질문 -->
-        <h2 class="border-bottom py-2">{{question.title }}</h2>
+        <h2 class="border-bottom py-2">{{ question.title }}</h2>
         <div class="card my-3">
             <div class="card-body">
                 <div class="card-text" style="white-space: pre-line;">{{ question.content }}</div>
                 <div class="d-flex justify-content-end">
                     <div class="badge bg-light text-dark p-2">
-                        {{ question.user}}
+                        {{ question.user }}
                         {{ question.created }}
                     </div>
                 </div>
                 <div class="my-3">
-                    <a href="{{ url_for('like_question', question_num = question.num ) }}"
-                        class="recommend btn btn-sm btn-outline-secondary"> 추천
+                    <a href="{{ url_for('like_question', question_num = question.num) }}"
+                        class="recommend btn btn-sm btn-outline-secondary">추천
                         <span class="badge rounded-pill bg-success">{{ question.likes }}</span>
                     </a>
                     {% if name == question.user %}
-                    <a href="{{ url_for('update_question', id=question.user, num = question.num) }}"
+                    <a href="{{ url_for('update_question', id=question.user, num=question.num) }}"
                        class="btn btn-sm btn-outline-secondary">수정하기</a>
-                    <a href="{{ url_for('delete_question', id=question.user, num = question.num) }}"
+                    <a href="{{ url_for('delete_question', id=question.user, num=question.num) }}"
                        class="btn btn-sm btn-outline-secondary">삭제</a>
                     {% endif %}
                 </div>
@@ -39,23 +40,29 @@
         {% for answer in comments %}
         <div class="card my-3">
             <div class="card-body">
-                <div class="card-text" style="white-space: pre-line;">{{ answer.content }}</div>
+                <div class="card-text" style="white-space: pre-line;">
+                    <div class="comment-text">{{ answer.content }}</div>
+                    <textarea class="comment-edit" style="display: none;">{{ answer.content }}</textarea>
+                </div>
                 <div class="d-flex justify-content-end">
                     <div class="badge bg-light text-dark p-2">
-                        {{ answer.user}}
+                        {{ answer.user }}
                         {{ answer.created }}
                     </div>
                 </div>
                 <div class="my-3">
-                    <a href="{{ url_for('like_comment', post_id = answer.id, post_num = answer.post_num ) }}"
-                        class="recommend btn btn-sm btn-outline-secondary"> 추천
+                    <a href="{{ url_for('like_comment', post_id=answer.id, post_num=answer.post_num) }}"
+                        class="recommend btn btn-sm btn-outline-secondary">추천
                         <span class="badge rounded-pill bg-success">{{ answer.likes }}</span>
                     </a>
                     {% if name == answer.user %}
-                    <a href="{{ url_for('update_comment', id=answer.id, num = answer.post_num) }}"
-                    class="btn btn-sm btn-outline-secondary">수정하기</a>
-                    <a href="{{ url_for('delete_comment', id=answer.id, num = answer.post_num, ) }}"
-                    class="btn btn-sm btn-outline-secondary">삭제</a>             
+                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-secondary edit-comment"
+                    data-comment-id="{{ answer.id }}" data-post-num="{{ answer.post_num }}">수정하기</a>
+                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-secondary cancel-comment"
+                    data-comment-id="{{ answer.id }}" data-post-num="{{ answer.post_num }}" style="display: none;">취소</a>
+                    <a href="{{ url_for('delete_comment', id=answer.id, num=answer.post_num) }}"
+                    class="btn btn-sm btn-outline-secondary delete-comment">삭제</a>
+                    <textarea class="comment-edit" style="display: none;">{{ answer.content }}</textarea>
                     {% endif %}
                 </div>
             </div>
@@ -70,6 +77,74 @@
             <input type="submit" value="답변등록" class="btn btn-primary">
         </form>
     </div>
+    <script>
+        // 이전 내용을 저장할 객체
+        var previousContent = {};
+    
+        // 수정하기 버튼을 눌렀을 때
+        $(document).on('click', '.edit-comment', function(event) {
+            event.preventDefault(); // 기본 동작 중지
+    
+            var commentId = $(this).data('comment-id');
+            var postNum = $(this).data('post-num');
+            var commentText = $(this).parent().siblings('.card-text').find('.comment-text');
+            var commentTextarea = $(this).parent().siblings('.card-text').find('.comment-edit');
+            var editButton = $(this);
+            var cancelButton = $(this).siblings('.cancel-comment'); // 추가: "취소" 버튼
+            if (editButton.text() === '수정하기') {
+                // 수정 모드로 전환
+                commentText.hide();
+                commentTextarea.show();
+                editButton.text('저장하기');
+                cancelButton.show(); // "취소" 버튼 보이게
+                $(this).siblings('.delete-comment').hide(); // "삭제" 버튼 숨김
+                // 현재 내용을 이전 내용에 저장
+                previousContent[commentId] = commentText.text();
+            } else {
+                // 저장하기 버튼을 눌렀을 때
+                var editedContent = commentTextarea.val();
+    
+                // Ajax 요청을 보냅니다.
+                $.ajax({
+                    type: 'POST',
+                    url: '/update_comment/' + commentId + '/' + postNum,
+                    data: {
+                        content: editedContent,
+                        csrf_token: '{{ csrf_token() }}' // CSRF 토큰 추가
+                    },
+                    success: function(response) {
+                        // 서버에서 업데이트가 성공하면 다시 텍스트로 표시
+                        commentText.text(editedContent);
+                        commentTextarea.hide();
+                        commentText.show();
+                        editButton.text('수정하기');
+                        cancelButton.hide();
+                        editButton.siblings('.delete-comment').show();
+                    },
+                    error: function(error) {
+                        console.error(error);
+                    }
+                });
+            }
+        });
+    
+        // 취소 버튼을 눌렀을 때
+        $(document).on('click', '.cancel-comment', function(event) {
+            event.preventDefault();
+            var commentId = $(this).prev().data('comment-id');
+            var commentText = $(this).parent().siblings('.card-text').find('.comment-text');
+            var commentTextarea = $(this).parent().siblings('.card-text').find('.comment-edit');
+            var editButton = $(this).prev();
+            var previousContentText = previousContent[commentId];
+            commentTextarea.val(previousContentText); // 이전 내용으로 복원
+            commentText.text(previousContentText);
+            commentTextarea.hide();
+            commentText.show();
+            editButton.text('수정하기');
+            $(this).hide();
+            editButton.siblings('.delete-comment').show();
+        });
+    </script>
     
 </body>
 </html>
