@@ -385,7 +385,10 @@ def like_question(question_num):
         cursor.close()
         return redirect(url_for('detail', num = question_num))
     else:
-        flash("추천은 1번만 가능합니다.")
+        cursor.execute("DELETE FROM liked_question WHERE user_id = ? AND question_num = ?", (name, question_num))
+        cursor.execute("UPDATE board SET likes = likes - 1 WHERE num = ?", (question_num,))
+        connection.commit()
+        cursor.close()
         return redirect(url_for('detail', num=question_num ))
 
 @app.route('/like_comment/<int:post_id>/<int:post_num>')
@@ -403,16 +406,49 @@ def like_comment(post_id, post_num):
         # 사용자가 해당 게시글을 아직 추천하지 않았으므로 추천을 추가
         cursor.execute("INSERT INTO liked_comment (user_id, post_id, post_num) VALUES (?, ?, ?)", (name, post_id, post_num))
         connection.commit()     
-        cursor.execute("UPDATE comments SET likes = likes + 1 WHERE id = ?", (post_id,))
+        cursor.execute("UPDATE comments SET likes = likes + 1  WHERE id = ?", (post_id,))
         connection.commit()
         cursor.close()
         return redirect(url_for('detail', num=question_number["post_num"]))
 
     else:
-        flash("추천은 1번만 가능합니다.")
+        cursor.execute("DELETE FROM liked_comment WHERE user_id = ? AND post_id = ? AND post_num = ?", (name, post_id, post_num))
+        cursor.execute("UPDATE comments SET likes = likes - 1 WHERE id = ?", (post_id,))
+        connection.commit()
         cursor.close()
         return redirect(url_for('detail',num=question_number["post_num"] ))
 
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    name = session.get('username')
+    page = request.args.get('page', 1, type=int)
+    page_size = 10  # 한 페이지에 표시할 아이템 수
+    offset = (page - 1) * page_size
+    search_query = request.form.get('search_query')
+    print(search_query)
+    connection = get_db()
+    cursor = connection.cursor()
+    cursor.execute('SELECT COUNT(*) from board WHERE title = ?', (search_query,))
+    total_items = cursor.fetchone()[0]
+    cursor.execute("SELECT board.*, COUNT(comments.id) as answer_count from board LEFT JOIN comments ON board.num = comments.post_num  WHERE title = ? GROUP BY board.num  ORDER BY board.created DESC LIMIT ? OFFSET ?", (search_query, page_size, offset))
+    search_list = cursor.fetchall()
+    total_pages = (total_items + page_size - 1) // page_size
+    search_with_index =  [(total_items - offset - idx, search) for idx, search in enumerate(search_list)]
+    return render_template('search.html', name=name, search_list=search_with_index, current_page=page, total_pages=total_pages)
+
+@app.route('/recomment/<int:id>/<int:num>', methods=['GET', 'POST'])
+def recomment(id, num):
+    name = session.get('username')
+    if request.method == 'POST':
+        content = request.form['content']
+        current_datetime = datetime.datetime.now()
+        created = current_datetime.strftime('%Y-%m-%d %H:%M:%S')     
+        connection = get_db()
+        cursor = connection.cursor()
+        cursor.execute("INSERT INTO comments (content, post_num, user, created, recomment) VALUES (?, ?, ?, ?, ?)", (content, num, name, created, id))
+        connection.commit()
+        cursor.close()    
+        return jsonify({'message': '답글이 성공적으로 생성되었습니다.'})
 if __name__ == '__main__':
     app.run(debug=True)
     

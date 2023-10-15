@@ -55,6 +55,11 @@
                         class="recommend btn btn-sm btn-outline-secondary">추천
                         <span class="badge rounded-pill bg-success">{{ answer.likes }}</span>
                     </a>
+                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-secondary edit-recomment"
+                    data-comment-id="{{ answer.id }}" data-post-num="{{ answer.post_num }}">답글달기</a>
+                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-secondary cancel-recomment"
+                    data-comment-id="{{ answer.id }}" data-post-num="{{ answer.post_num }}" style="display: none;">취소</a>
+                    <textarea class="recomment-edit" style="display: none; margin-left: 20px;">나 여깄어</textarea>
                     {% if name == answer.user %}
                     <a href="javascript:void(0);" class="btn btn-sm btn-outline-secondary edit-comment"
                     data-comment-id="{{ answer.id }}" data-post-num="{{ answer.post_num }}">수정하기</a>
@@ -80,7 +85,45 @@
     <script>
         // 이전 내용을 저장할 객체
         var previousContent = {};
+
+        // 답글 버튼을 눌렀을 때
+        $(document).on('click', '.edit-recomment', function(event) {
+            event.preventDefault(); // 기본 동작 중지
     
+            var commentId = $(this).data('comment-id');
+            var postNum = $(this).data('post-num');
+            var commentTextarea = $(this).parent().siblings('.card-text').find('.recomment-edit');
+            var editButton = $(this);
+            var cancelButton = $(this).siblings('.cancel-recomment'); // 추가: "취소" 버튼
+            console.log(commentTextarea)
+            commentTextarea.show();
+            editButton.text('저장하기');
+            cancelButton.show(); // "취소" 버튼 보이게
+            if (editButton.text() === '저장하기') {
+                // 저장하기 버튼을 눌렀을 때
+                var editedContent = commentTextarea.val();
+    
+                // Ajax 요청을 보냅니다.
+                $.ajax({
+                    type: 'POST',
+                    url: '/recomment/' + commentId + '/' + postNum,
+                    data: {
+                        content: editedContent,
+                        csrf_token: '{{ csrf_token() }}' // CSRF 토큰 추가
+                    },
+                    success: function(response) {
+                        // 서버에서 업데이트가 성공하면 다시 텍스트로 표시
+                        commentTextarea.text(editedContent);
+                        editButton.text('답글달기');
+                        cancelButton.hide();
+                    },
+                    error: function(error) {
+                        console.error(error);
+                    }
+                });
+            }
+        });
+        
         // 수정하기 버튼을 눌렀을 때
         $(document).on('click', '.edit-comment', function(event) {
             event.preventDefault(); // 기본 동작 중지

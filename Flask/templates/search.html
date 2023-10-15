@@ -7,13 +7,6 @@
 <body>
     {% include "navbar.html" %}
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <script>
-                alert("{{ messages[0] }}");
-            </script>
-        {% endif %}
-    {% endwith %}
     <div class="container my-3">
         <table class="table">
             <thead>
@@ -27,8 +20,8 @@
             </tr>
             </thead>
             <tbody>
-                {% if question_list %}
-                {% for idx, question in question_list %}
+                {% if search_list %}
+                {% for idx, question in search_list %}
                 <tr>
                     <td>{{ idx }}</td> <!-- 역순으로 번호 표시 -->
                     <td>
@@ -81,7 +74,6 @@
             <span class="page-link">다음</span>
             {% endif %}
         </div>
-        <a href="{{ url_for('question_create') }}" class="btn btn-primary">글쓰기</a>
     </div>
 </body>
 </html>
